@@ -1,0 +1,25 @@
+node_modules/
+dist/
+release/
+*.log
+.DS_Store
+
+# Private settings, credentials and local build data
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+ssh-credentials.json
+profile.json
+.agents/
+*.exe
+*.zip
+*.7z
+*.pdb
+*.tmp
+
+# Environment-managed mounts are not application source
+.aws/
+.codex/

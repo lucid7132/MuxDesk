@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src http: https:; object-src 'none'; base-uri 'none'" />
+    <title>cmux</title>
+    <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="titlebar">
+      <div class="traffic-controls window-no-drag" aria-label="창 제어">
+        <button id="window-close" class="traffic close" title="닫기"></button>
+        <button id="window-minimize" class="traffic minimize" title="최소화"></button>
+        <button id="window-maximize" class="traffic maximize" title="최대화"></button>
+      </div>
+      <div class="title-tools window-no-drag">
+        <button id="title-toggle-sidebar" class="toolbar-button" title="사이드바 접기/펼치기">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="2"/><path d="M7 3v14"/></svg>
+        </button>
+        <button id="title-add-terminal" class="toolbar-button" title="새 터미널">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v14M3 10h14"/></svg>
+        </button>
+      </div>
+      <div class="title-workspace">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5h6l1.5 2h7.5v8.5h-15z"/><path d="M2.5 7.5v-3h5l1.5 1"/></svg>
+        <span id="workspace-title" class="window-title"></span>
+        <span id="input-mode-indicator" class="input-mode-indicator" title="cmux 단축키 비활성화" hidden>Insert</span>
+      </div>
+      <div class="title-tools title-tools-right window-no-drag">
+        <button id="title-add-browser" class="toolbar-button" title="새 브라우저">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2.4 2.2 3.3 4.7 3.3 7.5S12.4 15.3 10 17.5C7.6 15.3 6.7 12.8 6.7 10S7.6 4.7 10 2.5z"/></svg>
+        </button>
+        <button id="title-settings" class="toolbar-button" title="설정">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.5"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <section id="ssh-section" class="ssh-section">
+          <div class="ssh-heading">
+            <button id="toggle-ssh" class="ssh-toggle" title="SSH 목록 접기/펼치기"><span class="ssh-chevron">⌄</span><span>SSH</span></button>
+            <button id="add-ssh" class="icon-button" title="SSH 접속 등록">＋</button>
+          </div>
+          <div id="ssh-list" class="ssh-list"></div>
+        </section>
+        <section id="command-section" class="command-section">
+          <div class="ssh-heading">
+            <button id="toggle-commands" class="ssh-toggle" title="명령어 목록 접기/펼치기"><span class="command-chevron">⌄</span><span>COMMANDS</span></button>
+            <button id="add-command" class="icon-button" title="명령어 등록">＋</button>
+          </div>
+          <div id="command-list" class="command-list"></div>
+        </section>
+        <div class="sidebar-heading">
+          <span class="sidebar-label">WORKSPACES</span>
+          <div class="heading-actions">
+            <button id="add-workspace" class="icon-button" title="워크스페이스 추가">＋</button>
+          </div>
+        </div>
+        <nav id="workspace-list"></nav>
+      </aside>
+      <div id="sidebar-resizer" title="드래그해 사이드바 크기 조절"></div>
+      <main id="stage"></main>
+    </div>
+    <div id="toast" role="status"></div>
+    <div id="settings-modal" class="modal-backdrop" hidden>
+      <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <header class="settings-header"><div><h2 id="settings-title">Settings</h2><p>단축키 입력란을 선택한 뒤 원하는 키 조합을 누르세요.</p></div><button id="close-settings" class="dialog-close">×</button></header>
+        <div id="shortcut-list" class="shortcut-list"></div>
+        <footer class="settings-footer"><button id="reset-shortcuts" class="secondary-button">기본값 복원</button><button id="done-settings" class="primary-button">완료</button></footer>
+      </section>
+    </div>
+    <div id="ssh-modal" class="modal-backdrop" hidden>
+      <section class="ssh-dialog" role="dialog" aria-modal="true" aria-labelledby="ssh-dialog-title">
+        <header class="settings-header"><div><h2 id="ssh-dialog-title">SSH connection</h2><p>SSH config 별칭도 Host에 입력할 수 있습니다. 비밀번호 저장은 선택 사항입니다.</p></div><button id="close-ssh-dialog" class="dialog-close">×</button></header>
+        <form id="ssh-form" class="ssh-form">
+          <input id="ssh-id" type="hidden" />
+          <label><span>표시 이름</span><input id="ssh-name" placeholder="Production" required /></label>
+          <label><span>Host 또는 Config 별칭</span><input id="ssh-host" placeholder="example.com 또는 my-server" required /></label>
+          <div class="ssh-form-row">
+            <label><span>사용자</span><input id="ssh-user" placeholder="ubuntu" /></label>
+            <label><span>포트</span><input id="ssh-port" type="number" min="1" max="65535" placeholder="22" /></label>
+          </div>
+          <label><span>IdentityFile 경로</span><input id="ssh-key" placeholder="C:\Users\me\.ssh\id_ed25519" /></label>
+          <label><span>비밀번호 (선택)</span><input id="ssh-password" type="password" autocomplete="new-password" placeholder="Windows 보안 저장소에 암호화" /></label>
+          <label id="clear-password-row" class="checkbox-row" hidden><input id="ssh-clear-password" type="checkbox" /><span>저장된 비밀번호 삭제</span></label>
+          <p class="credential-hint">비밀번호는 SSH 명령이나 레이아웃에 저장되지 않으며, Windows 사용자 계정으로 암호화됩니다.</p>
+          <p id="ssh-form-error" class="form-error"></p>
+          <footer class="ssh-form-footer"><button id="delete-ssh" type="button" class="danger-button" hidden>삭제</button><span></span><button id="cancel-ssh" type="button" class="secondary-button">취소</button><button type="submit" class="primary-button">저장</button></footer>
+        </form>
+      </section>
+    </div>
+    <div id="command-modal" class="modal-backdrop" hidden>
+      <section class="ssh-dialog" role="dialog" aria-modal="true" aria-labelledby="command-dialog-title">
+        <header class="settings-header"><div><h2 id="command-dialog-title">New command</h2><p>클릭하면 현재 선택된 터미널에 명령어를 전송합니다.</p></div><button id="close-command-dialog" class="dialog-close">×</button></header>
+        <form id="command-form" class="ssh-form">
+          <input id="command-id" type="hidden" />
+          <label><span>표시 이름</span><input id="command-name" placeholder="Git status" required /></label>
+          <label><span>터미널 명령어</span><textarea id="command-value" class="command-editor" placeholder="git status" required></textarea></label>
+          <label class="checkbox-row"><input id="command-run" type="checkbox" checked /><span>클릭하면 즉시 실행 (Enter 포함)</span></label>
+          <p class="credential-hint">명령어는 로컬 설정에 저장됩니다. 비밀번호·토큰 등 비밀값은 입력하지 마세요.</p>
+          <p id="command-form-error" class="form-error"></p>
+          <footer class="ssh-form-footer"><button id="delete-command" type="button" class="danger-button" hidden>삭제</button><span></span><button id="cancel-command" type="button" class="secondary-button">취소</button><button type="submit" class="primary-button">저장</button></footer>
+        </form>
+      </section>
+    </div>
+    <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+    <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script src="../../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
