@@ -1,10 +1,46 @@
-# MuxDesk
+<p align="center">
+  <img src="docs/assets/muxdesk.svg" width="112" height="112" alt="MuxDesk 로고" />
+</p>
 
-**PowerShell, SSH, 브라우저를 한 화면에서 사용하는 Windows용 터미널 작업 공간입니다.**
+<h1 align="center">MuxDesk</h1>
 
-프로젝트별로 워크스페이스를 만들고 화면을 나눠 여러 터미널을 함께 사용하세요. 자주 접속하는 서버와 반복해서 쓰는 명령어를 사이드바에 등록할 수 있습니다.
+<p align="center">
+  <strong>여러 터미널, 하나의 작업 공간.</strong><br />
+  PowerShell · SSH · 브라우저를 한 화면에서 사용하세요.
+</p>
 
-[**다운로드**](https://github.com/lucid7132/MuxDesk/releases/latest) · [문제 신고](https://github.com/lucid7132/MuxDesk/issues)
+<p align="center">
+  <strong>Windows x64</strong> &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; 설치 없이 실행
+</p>
+
+<p align="center">
+  <a href="https://github.com/lucid7132/MuxDesk/releases/latest"><strong>⬇ 다운로드</strong></a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#시작하기">빠른 시작</a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#기본-단축키">단축키</a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="https://github.com/lucid7132/MuxDesk/issues">문제 신고</a>
+</p>
+
+---
+
+프로젝트마다 워크스페이스를 만들고, 터미널을 원하는 방향으로 나누고, 자주 쓰는 서버와 명령어를 바로 실행하세요. MuxDesk는 여러 작업을 한 화면에서 이어갈 수 있도록 돕는 Windows용 터미널 앱입니다.
+
+<!-- 실제 Windows 실행 화면이 준비되면 이 위치에 추가합니다. -->
+
+<table>
+  <tr>
+    <td align="center" width="33%"><h3>▦ 자유로운 화면 분할</h3>터미널을 상하좌우로 배치하고<br />드래그로 크기와 위치를 조절하세요.</td>
+    <td align="center" width="33%"><h3>↗ SSH 빠른 접속</h3>서버와 SSH 별칭을 저장하고<br />목록에서 클릭해 접속하세요.</td>
+    <td align="center" width="33%"><h3>⌘ 나만의 작업 공간</h3>프로젝트별로 화면을 나누고<br />이름·메모·아이콘으로 구분하세요.</td>
+  </tr>
+  <tr>
+    <td align="center"><h3>›_ 저장 명령어</h3>반복하는 명령어를 등록해<br />선택한 터미널로 전송하세요.</td>
+    <td align="center"><h3>◎ 내장 브라우저</h3>문서와 웹페이지를<br />터미널 옆에서 확인하세요.</td>
+    <td align="center"><h3>↻ 작업 이어가기</h3>창을 다시 열어<br />터미널 세션과 배치를 이어가세요.</td>
+  </tr>
+</table>
 
 ## 시작하기
 
@@ -13,18 +49,6 @@
 3. 처음 열리는 PowerShell에서 작업을 시작합니다. `Ctrl+D`를 누르면 오른쪽에 터미널을 하나 더 열 수 있습니다.
 
 Windows **64비트(x64)**용이며 별도 설치 과정 없이 실행됩니다. Node.js나 개발 도구를 설치할 필요가 없습니다. v1.0.0의 실행 파일 이름은 `cmux-v1.0.0.exe`입니다. 실행할 때는 EXE를 다운로드하세요. `Source code` 압축 파일은 개발용 소스입니다.
-
-## 주요 기능
-
-| 기능 | 할 수 있는 일 |
-| --- | --- |
-| 워크스페이스 | 프로젝트별로 터미널 배치를 나눠 관리 |
-| 화면 분할 | 터미널과 브라우저를 상하좌우로 배치 |
-| SSH 접속 목록 | 서버 정보와 SSH config 별칭을 저장해 접속 |
-| 저장 명령어 | 자주 쓰는 명령어를 선택한 터미널에 전송 |
-| 내장 브라우저 | 터미널 옆에서 문서와 웹페이지 확인 |
-| 작업 복원 | 창을 다시 열어 터미널 세션과 화면 구성 이어가기 |
-| 단축키 설정 | 주요 작업에 사용할 키 조합 변경 |
 
 ## 워크스페이스와 패널
 
@@ -108,6 +132,9 @@ Windows에서 `ssh` 명령을 사용할 수 있어야 합니다. 기존 SSH conf
 
 워크스페이스 배치, SSH 접속 목록, 저장 명령어와 단축키는 자동 저장됩니다. 앱 창을 닫아도 터미널 프로세스는 백그라운드에서 유지되므로 다시 열어 작업을 이어갈 수 있습니다. Windows를 재부팅하면 화면 배치를 복원하고 터미널 프로세스는 새로 시작합니다.
 
+<details>
+<summary><strong>설정 저장 위치와 백업 안내</strong></summary>
+
 설정 폴더를 열려면 `Win+R`을 누르고 다음 경로를 입력하세요.
 
 ```text
@@ -115,6 +142,8 @@ Windows에서 `ssh` 명령을 사용할 수 있어야 합니다. 기존 SSH conf
 ```
 
 `profile.json`에 작업 공간과 사용자 설정이 저장됩니다. 저장한 SSH 비밀번호는 별도 파일에 Windows 사용자 계정으로 암호화되며, 다른 PC나 계정에서는 다시 입력해야 할 수 있습니다. EXE를 삭제해도 이 설정 폴더는 남습니다.
+
+</details>
 
 ## 문제가 생겼나요?
 

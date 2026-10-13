@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">MuxDesk</title>
+  <desc id="desc">A terminal and two workspace panes inside a rounded blue square.</desc>
+  <defs>
+    <linearGradient id="surface" x1="12" y1="8" x2="112" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#243957"/>
+      <stop offset="1" stop-color="#101B30"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="28" y1="42" x2="80" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#76C8FF"/>
+      <stop offset="1" stop-color="#8595FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#surface)" stroke="#415779" stroke-width="2"/>
+  <rect x="22" y="29" width="84" height="70" rx="10" fill="#111C2D" stroke="#6689B8" stroke-width="2"/>
+  <path d="M23 43H105M75 44V98M76 71H105" stroke="#6689B8" stroke-width="2"/>
+  <circle cx="31" cy="36" r="2" fill="#8FB4DB"/>
+  <circle cx="38" cy="36" r="2" fill="#8FB4DB"/>
+  <circle cx="45" cy="36" r="2" fill="#8FB4DB"/>
+  <path d="M34 60L44 70L34 80M49 80H62" stroke="url(#accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M84 54H97M84 61H92" stroke="#86B3DD" stroke-width="3" stroke-linecap="round"/>
+  <rect x="83" y="80" width="15" height="10" rx="3" fill="#78DAB6"/>
+</svg>
