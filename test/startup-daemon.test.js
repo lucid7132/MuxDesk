@@ -8,19 +8,26 @@ const root = path.resolve(__dirname, '..');
 const main = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
 const daemon = fs.readFileSync(path.join(root, 'src/terminal-daemon.js'), 'utf8');
 
-test('profiles stay beside each portable EXE and Chromium caches stay local', (t) => {
+test('release copies share the existing 1.0.0 .env profile and custom profiles stay isolated', (t) => {
   const directory = fs.mkdtempSync(path.join(root, '.env', 'startup-test-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const shared = path.join(directory, 'local-appdata', 'cmux-public-v1', '.env');
+  const existingProfile = { settings: { shortcuts: { splitRight: 'Alt+D' } },
+    ssh: { connections: [{ id: 'saved-ssh', host: 'example.com' }] },
+    commands: { items: [{ id: 'saved-command', value: 'git status' }] }, workspaces: [] };
+  const store = require('../src/private-store').createPrivateStore(shared);
+  store.write('profile.json', existingProfile);
+  const original = fs.readFileSync(path.join(shared, 'profile.json'));
   const scenarios = [
     { packaged: false, environment: {}, expected: path.join(directory, '.env') },
     ...['release', 'desktop'].map((name) => ({ packaged: true,
       environment: { PORTABLE_EXECUTABLE_DIR: path.join(directory, name) },
-      expected: path.join(directory, name, '.env') })),
-    { packaged: true, environment: {}, expected: path.join(directory, 'raw', '.env') },
+      expected: shared })),
+    { packaged: true, environment: {}, expected: shared },
     { packaged: true, environment: { CMUX_PRIVATE_DIR: path.join(directory, 'custom') },
       expected: path.join(directory, 'custom') }
   ];
-  const profiles = new Set();
+  const releaseCaches = new Set();
   for (const { packaged, environment, expected } of scenarios) {
     const configured = {};
     let privateDirectory;
@@ -38,9 +45,13 @@ test('profiles stay beside each portable EXE and Chromium caches stay local', (t
     const slot = require('node:crypto').createHash('sha256').update(expected).digest('hex').slice(0, 16);
     assert.equal(configured.userData, path.join(appData, 'cmux-public-v1', 'runtime', slot));
     assert.equal(configured.sessionData, path.join(configured.userData, 'chromium'));
-    assert(!profiles.has(configured.userData));
-    profiles.add(configured.userData);
+    if (packaged && !environment.CMUX_PRIVATE_DIR) {
+      releaseCaches.add(configured.userData);
+      assert.deepEqual(require('../src/private-store').createPrivateStore(privateDirectory).read('profile.json'), existingProfile);
+    } else assert.notEqual(privateDirectory, shared);
   }
+  assert.equal(releaseCaches.size, 1);
+  assert(fs.readFileSync(path.join(shared, 'profile.json')).equals(original));
 });
 
 test('first terminal input waits for daemon startup rather than being dropped', async () => {

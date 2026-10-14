@@ -5,9 +5,9 @@ const fs = require('node:fs');
 const { createPrivateStore } = require('./private-store');
 const { createHash } = require('node:crypto');
 
-// Profiles travel with their EXE directory; Chromium data stays on a local disk.
+// Release versions share the same private .env; Chromium caches stay separate.
 const privateDirectory = path.resolve(process.env.CMUX_PRIVATE_DIR || (app.isPackaged
-  ? path.join(process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath), '.env')
+  ? path.join(app.getPath('appData'), 'cmux-public-v1', '.env')
   : path.join(app.getAppPath(), '.env')));
 const profileSlot = createHash('sha256').update(privateDirectory).digest('hex').slice(0, 16);
 const userDataDirectory = path.join(app.getPath('appData'), 'cmux-public-v1', 'runtime', profileSlot);
