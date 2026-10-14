@@ -6,6 +6,7 @@ const stage = $('#stage');
 const terminalViews = new Map();
 let draggedLeafId = null;
 let draggedWorkspaceId = null;
+let draggedSavedItem = null;
 let saveTimer = null;
 let toastTimer = null;
 let fitScheduled = false;
@@ -246,6 +247,28 @@ function openSshConnection(connection) {
   render();
 }
 
+function savedItems(isSsh) {
+  return isSsh ? state.ssh.connections : state.commands.items;
+}
+
+function sortSshFavorites() {
+  state.ssh.connections.sort((a, b) => Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)));
+}
+
+function moveSavedItem(isSsh, sourceId, targetId, after) {
+  const items = savedItems(isSsh);
+  const from = items.findIndex((item) => item.id === sourceId);
+  const to = items.findIndex((item) => item.id === targetId);
+  if (from < 0 || to < 0 || from === to) return false;
+  // Favorites keep their own group at the top; reordering never toggles a star.
+  if (isSsh && Boolean(items[from].favorite) !== Boolean(items[to].favorite)) return false;
+  let insertion = to + Number(after);
+  const [item] = items.splice(from, 1);
+  if (from < insertion) insertion -= 1;
+  items.splice(insertion, 0, item);
+  return true;
+}
+
 function renderSavedList(isSsh) {
   const kind = isSsh ? 'ssh' : 'command';
   const group = isSsh ? state.ssh : state.commands;
@@ -253,7 +276,8 @@ function renderSavedList(isSsh) {
   section.classList.toggle('collapsed', group.collapsed);
   const list = $(`#${kind}-list`);
   list.replaceChildren();
-  const items = isSsh ? group.connections : group.items;
+  if (isSsh) sortSshFavorites();
+  const items = savedItems(isSsh);
   if (!items.length) {
     const empty = document.createElement('button');
     empty.className = 'ssh-empty';
@@ -265,6 +289,41 @@ function renderSavedList(isSsh) {
   for (const item of items) {
     const row = document.createElement('div');
     row.className = `ssh-item${isSsh ? '' : ' command-item'}`;
+    row.draggable = true;
+    row.ondragstart = (event) => {
+      draggedSavedItem = { isSsh, id: item.id };
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', item.id);
+    };
+    row.ondragend = () => {
+      draggedSavedItem = null;
+      document.querySelectorAll('.saved-drop-before, .saved-drop-after').forEach((element) =>
+        element.classList.remove('saved-drop-before', 'saved-drop-after'));
+    };
+    row.ondragover = (event) => {
+      if (!draggedSavedItem || draggedSavedItem.isSsh !== isSsh || draggedSavedItem.id === item.id) return;
+      const source = items.find((entry) => entry.id === draggedSavedItem.id);
+      if (!source || (isSsh && Boolean(source.favorite) !== Boolean(item.favorite))) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      const rect = row.getBoundingClientRect();
+      const after = event.clientY >= rect.top + rect.height / 2;
+      row.classList.toggle('saved-drop-before', !after);
+      row.classList.toggle('saved-drop-after', after);
+    };
+    row.ondragleave = (event) => {
+      if (!row.contains(event.relatedTarget)) row.classList.remove('saved-drop-before', 'saved-drop-after');
+    };
+    row.ondrop = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      row.classList.remove('saved-drop-before', 'saved-drop-after');
+      if (!draggedSavedItem || draggedSavedItem.isSsh !== isSsh) return;
+      const rect = row.getBoundingClientRect();
+      const moved = moveSavedItem(isSsh, draggedSavedItem.id, item.id, event.clientY >= rect.top + rect.height / 2);
+      draggedSavedItem = null;
+      if (moved) { persist(); renderSavedList(isSsh); }
+    };
     const run = document.createElement('button');
     run.className = 'ssh-connect';
     run.title = isSsh ? buildSshCommand(item) : item.value;
@@ -279,7 +338,24 @@ function renderSavedList(isSsh) {
     edit.textContent = '•••';
     edit.title = `${isSsh ? 'SSH 접속' : '명령어'} 편집`;
     edit.onclick = () => isSsh ? openSshDialog(item) : openCommandDialog(item);
-    row.append(run, edit);
+    row.append(run);
+    if (isSsh) {
+      const favorite = document.createElement('button');
+      favorite.className = `ssh-favorite${item.favorite ? ' selected' : ''}`;
+      favorite.textContent = item.favorite ? '★' : '☆';
+      favorite.title = item.favorite ? '즐겨찾기 해제' : '즐겨찾기 추가';
+      favorite.setAttribute('aria-label', favorite.title);
+      favorite.setAttribute('aria-pressed', String(Boolean(item.favorite)));
+      favorite.onclick = (event) => {
+        event.stopPropagation();
+        item.favorite = !item.favorite;
+        sortSshFavorites();
+        persist();
+        renderSavedList(true);
+      };
+      row.append(favorite);
+    }
+    row.append(edit);
     list.append(row);
   }
 }
@@ -887,6 +963,8 @@ function handleTerminalKey(event, terminal) {
   }
   if (key === 'c' && event.shiftKey) return false;
   if (key === 'v') {
+    event.preventDefault();
+    event.stopPropagation();
     window.cmux.clipboard.readText().then((text) => {
       if (text) terminal.paste(text);
     }).catch((error) => toast(error.message));
@@ -1209,6 +1287,7 @@ $('#ssh-form').onsubmit = async (event) => {
   const index = state.ssh.connections.findIndex((item) => item.id === connection.id);
   const existing = index === -1 ? null : state.ssh.connections[index];
   try {
+    connection.favorite = Boolean(existing?.favorite);
     if (connection._clearPassword) {
       await window.cmux.credentials.delete(connection.id);
       connection.passwordSaved = false;

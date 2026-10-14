@@ -24,6 +24,18 @@ jobs:
         run: |
           $version = node -p "require('./package.json').version"
           if ($env:RELEASE_TAG -ne "v$version") { throw 'Tag must match package.json version.' }
+      - name: Check PowerShell script syntax
+        shell: pwsh
+        run: |
+          foreach ($script in Get-ChildItem scripts -Filter '*.ps1' -File) {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) {
+              $parseErrors | ForEach-Object { Write-Host "$($script.Name):$($_.Extent.StartLineNumber): $($_.Message)" }
+              throw 'PowerShell syntax validation failed.'
+            }
+          }
       - name: Prepare and verify Windows release
         shell: pwsh
         run: ./scripts/prepare-release.ps1
@@ -42,6 +54,12 @@ jobs:
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $asset = (Resolve-Path "release/cmux-v$version.exe").Path
-          gh release create $env:RELEASE_TAG $asset "$asset.sha256" --verify-tag --generate-notes
+          gh release view $env:RELEASE_TAG --json tagName | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG $asset "$asset.sha256" --clobber
+          } else {
+            gh release create $env:RELEASE_TAG $asset "$asset.sha256" --verify-tag --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed.' }
     permissions:
       contents: write

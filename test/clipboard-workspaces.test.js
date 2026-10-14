@@ -43,7 +43,7 @@ test('xterm copies UTF-8 OSC 52 with BEL, ST and tmux passthrough; ignores queri
 });
 
 test('workspace drops move in both directions and save without remounting terminals', () => {
-  const start = source.indexOf('    row.ondrop =');
+  const start = source.indexOf('    row.ondrop =', source.indexOf('function renderSidebar'));
   const end = source.indexOf('    const button =', start);
   for (const [from, to, y, expected] of [
     ['a', 'c', 90, 'bca'], ['c', 'a', 10, 'cab'],
@@ -119,4 +119,49 @@ test('workspace shortcuts leave an open SSH or command dialog intact', () => {
   dialogOpen = false;
   assert.equal(vm.runInContext('executeShortcut(event)', context), true);
   assert.equal(actions, 1);
+});
+
+test('Ctrl+V cancels native paste and sends one Unicode/multiline paste', async () => {
+  for (const shiftKey of [false, true]) {
+    const text = '한글\nsecond line';
+    let reads = 0;
+    const pasted = [];
+    const context = vm.createContext({ executeShortcut: () => false,
+      window: { cmux: { clipboard: { readText: async () => { reads++; return text; } } } },
+      toast: () => assert.fail('Unexpected clipboard error') });
+    vm.runInContext(source.slice(source.indexOf('function handleTerminalKey'), source.indexOf('function normalizeUrl')), context);
+    const event = { type: 'keydown', key: 'v', ctrlKey: true, shiftKey,
+      preventDefault() { this.defaultPrevented = true; },
+      stopPropagation() { this.stopped = true; } };
+    context.event = event;
+    context.terminal = { paste: (value) => pasted.push(value) };
+    assert.equal(vm.runInContext('handleTerminalKey(event, terminal)', context), false);
+    await new Promise((resolve) => setImmediate(resolve));
+    // Model Chromium's default clipboard dispatch only when keydown is not cancelled.
+    if (!event.defaultPrevented) context.terminal.paste(text);
+    assert.equal(event.stopped, true);
+    assert.equal(reads, 1);
+    assert.deepEqual(pasted, [text]);
+  }
+});
+
+test('favorites sort stably and saved lists reorder in both directions', () => {
+  const context = vm.createContext({ state: { ssh: { connections: [
+    { id: 'a' }, { id: 'b', favorite: true }, { id: 'c' }, { id: 'd', favorite: true }
+  ] }, commands: { items: ['a', 'b', 'c'].map((id) => ({ id })) } } });
+  vm.runInContext(source.slice(source.indexOf('function savedItems'), source.indexOf('function renderSavedList')), context);
+  const ids = (items) => items.map((item) => item.id).join('');
+  vm.runInContext('sortSshFavorites()', context);
+  assert.equal(ids(context.state.ssh.connections), 'bdac');
+  assert.equal(vm.runInContext("moveSavedItem(true, 'd', 'b', false)", context), true);
+  assert.equal(ids(context.state.ssh.connections), 'dbac');
+  assert.equal(vm.runInContext("moveSavedItem(true, 'a', 'd', false)", context), false);
+  context.state.ssh.connections.find((item) => item.id === 'a').favorite = true;
+  vm.runInContext('sortSshFavorites()', context);
+  assert.equal(ids(context.state.ssh.connections), 'dbac');
+  assert.equal(vm.runInContext("moveSavedItem(false, 'a', 'c', true)", context), true);
+  assert.equal(ids(context.state.commands.items), 'bca');
+  assert.equal(vm.runInContext("moveSavedItem(false, 'a', 'b', false)", context), true);
+  assert.equal(ids(context.state.commands.items), 'abc');
+  assert.equal(vm.runInContext("moveSavedItem(false, 'missing', 'b', false)", context), false);
 });

@@ -3,6 +3,18 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 . (Join-Path $PSScriptRoot 'run-log.ps1')
 $run = Start-RunLog $root 'logging-test'
 try {
+  foreach ($script in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1' -File) {
+    $tokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+      $details = ($parseErrors | ForEach-Object {
+        "$($script.Name):$($_.Extent.StartLineNumber): $($_.Message)"
+      }) -join [Environment]::NewLine
+      throw "PowerShell syntax validation failed:`n$details"
+    }
+  }
+  Write-RunMessage $run 'All PowerShell release scripts passed syntax validation.'
   $code = Invoke-LoggedCommand $run 'Capture both native streams and exit code' 'powershell.exe' @(
     '-NoProfile', '-Command', "[Console]::Out.WriteLine('stdout-marker'); [Console]::Error.WriteLine('stderr-marker'); exit 7") @(7)
   if ($code -ne 7) { throw 'Logging self-test: native exit code was not captured.' }

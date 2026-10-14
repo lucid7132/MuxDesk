@@ -7,7 +7,11 @@ $exe = (Resolve-Path (Join-Path $root "release/cmux-v$version.exe")).Path
 # processes cannot reliably launch from an SMB drive, including a mapped drive.
 $localTemp = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) "Temp/cmux-smoke-$([guid]::NewGuid().ToString('N'))"
 $localTemp = [IO.Path]::GetFullPath($localTemp)
-$profile = Join-Path $localTemp 'profile'
+$profile = [IO.Path]::GetFullPath((Join-Path $localTemp 'profile'))
+$hasher = [Security.Cryptography.SHA256]::Create()
+try { $slot = ([BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($profile)))).Replace('-', '').ToLowerInvariant().Substring(0, 16) }
+finally { $hasher.Dispose() }
+$runtimeCache = Join-Path ([Environment]::GetFolderPath('ApplicationData')) "cmux-public-v1/runtime/$slot"
 $previous = @{}
 foreach ($name in @('CMUX_PRIVATE_DIR', 'ELECTRON_RUN_AS_NODE', 'TEMP', 'TMP')) {
   $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
@@ -86,5 +90,6 @@ try {
     if (-not $app.WaitForExit(5000)) { Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue }
   }
   foreach ($name in $previous.Keys) { [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process') }
+  Remove-Item $runtimeCache -Recurse -Force -ErrorAction Continue
   Remove-Item $localTemp -Recurse -Force -ErrorAction Continue
 }

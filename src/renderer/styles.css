@@ -441,3 +441,13 @@ webview { height: calc(100% - 39px); background: #1c1f24; }
 .workspace-drop-before::before, .workspace-drop-after::after { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: #72a5e6; pointer-events: none; }
 .workspace-drop-before::before { top: 0; }
 .workspace-drop-after::after { bottom: 0; }
+
+/* Saved connection and command ordering. */
+.ssh-item[draggable="true"] { cursor: grab; }
+.ssh-item[draggable="true"]:active { cursor: grabbing; }
+.ssh-item:not(.command-item) .ssh-connect { padding-right: 58px; }
+.ssh-favorite { position: absolute; right: 31px; width: 25px; height: 25px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #7c8794; cursor: pointer; font-size: 18px; }
+.ssh-favorite:hover, .ssh-favorite.selected { color: #f0c76c; }
+.saved-drop-before::before, .saved-drop-after::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: #72a5e6; pointer-events: none; }
+.saved-drop-before::before { top: 0; }
+.saved-drop-after::after { bottom: 0; }

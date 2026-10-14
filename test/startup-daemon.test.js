@@ -8,27 +8,39 @@ const root = path.resolve(__dirname, '..');
 const main = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
 const daemon = fs.readFileSync(path.join(root, 'src/terminal-daemon.js'), 'utf8');
 
-test('fresh startup creates its profile directory before configuring Electron', (t) => {
-  fs.mkdirSync(path.join(root, '.env'), { recursive: true });
+test('profiles stay beside each portable EXE and Chromium caches stay local', (t) => {
   const directory = fs.mkdtempSync(path.join(root, '.env', 'startup-test-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  for (const packaged of [false, true]) {
-    for (const privateDirectory of [null, path.join(directory, 'private-a'), path.join(directory, 'private-b')]) {
-      const configured = {};
-      const app = { isPackaged: packaged, getAppPath: () => directory,
-        getPath: (name) => configured[name] || directory,
-        setPath: (name, value) => { assert(fs.existsSync(value)); configured[name] = value; } };
-      vm.runInNewContext(main.slice(0, main.indexOf('function readCredentials')), {
-        require: (name) => name === 'electron' ? { app } : name === './private-store' ? require('../src/private-store') : require(name),
-        process: { env: privateDirectory ? { CMUX_PRIVATE_DIR: privateDirectory } : {} }
-      });
-      const expected = privateDirectory ? path.join(privateDirectory, 'runtime')
-        : packaged ? path.join(directory, 'cmux-public-v1') : path.join(directory, '.env', 'runtime');
-      assert.equal(configured.userData, expected);
-      assert.equal(configured.sessionData, path.join(expected, 'chromium'));
-    }
+  const scenarios = [
+    { packaged: false, environment: {}, expected: path.join(directory, '.env') },
+    ...['release', 'desktop'].map((name) => ({ packaged: true,
+      environment: { PORTABLE_EXECUTABLE_DIR: path.join(directory, name) },
+      expected: path.join(directory, name, '.env') })),
+    { packaged: true, environment: {}, expected: path.join(directory, 'raw', '.env') },
+    { packaged: true, environment: { CMUX_PRIVATE_DIR: path.join(directory, 'custom') },
+      expected: path.join(directory, 'custom') }
+  ];
+  const profiles = new Set();
+  for (const { packaged, environment, expected } of scenarios) {
+    const configured = {};
+    let privateDirectory;
+    const appData = path.join(directory, 'local-appdata');
+    const app = { isPackaged: packaged, getAppPath: () => directory,
+      getPath: () => appData,
+      setPath: (name, value) => { assert(fs.existsSync(value)); configured[name] = value; } };
+    vm.runInNewContext(main.slice(0, main.indexOf('function readCredentials')), {
+      require: (name) => name === 'electron' ? { app } : name === './private-store'
+        ? { createPrivateStore: (value) => { privateDirectory = value; return require('../src/private-store').createPrivateStore(value); } }
+        : require(name),
+      process: { env: environment, execPath: path.join(directory, 'raw', 'cmux.exe') }
+    });
+    assert.equal(privateDirectory, expected);
+    const slot = require('node:crypto').createHash('sha256').update(expected).digest('hex').slice(0, 16);
+    assert.equal(configured.userData, path.join(appData, 'cmux-public-v1', 'runtime', slot));
+    assert.equal(configured.sessionData, path.join(configured.userData, 'chromium'));
+    assert(!profiles.has(configured.userData));
+    profiles.add(configured.userData);
   }
-
 });
 
 test('first terminal input waits for daemon startup rather than being dropped', async () => {

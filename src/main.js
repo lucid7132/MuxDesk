@@ -5,21 +5,16 @@ const fs = require('node:fs');
 const { createPrivateStore } = require('./private-store');
 const { createHash } = require('node:crypto');
 
-// Keep each private profile and its persistent terminal daemon isolated.
-const configuredPrivateDirectory = process.env.CMUX_PRIVATE_DIR
-  ? path.resolve(process.env.CMUX_PRIVATE_DIR) : null;
-const userDataDirectory = configuredPrivateDirectory
-  ? path.join(configuredPrivateDirectory, 'runtime')
-  : app.isPackaged ? path.join(app.getPath('appData'), 'cmux-public-v1')
-    : path.join(app.getAppPath(), '.env', 'runtime');
+// Profiles travel with their EXE directory; Chromium data stays on a local disk.
+const privateDirectory = path.resolve(process.env.CMUX_PRIVATE_DIR || (app.isPackaged
+  ? path.join(process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath), '.env')
+  : path.join(app.getAppPath(), '.env')));
+const profileSlot = createHash('sha256').update(privateDirectory).digest('hex').slice(0, 16);
+const userDataDirectory = path.join(app.getPath('appData'), 'cmux-public-v1', 'runtime', profileSlot);
 const sessionDataDirectory = path.join(userDataDirectory, 'chromium');
-for (const directory of [userDataDirectory, sessionDataDirectory]) {
-  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-}
+fs.mkdirSync(sessionDataDirectory, { recursive: true, mode: 0o700 });
 app.setPath('userData', userDataDirectory);
 app.setPath('sessionData', sessionDataDirectory);
-const privateDirectory = configuredPrivateDirectory
-  || (app.isPackaged ? path.join(userDataDirectory, '.env') : path.join(app.getAppPath(), '.env'));
 const privateStore = createPrivateStore(privateDirectory);
 const diagnosticsDirectory = path.join(privateDirectory, 'logs');
 fs.mkdirSync(diagnosticsDirectory, { recursive: true, mode: 0o700 });
@@ -34,7 +29,6 @@ function logApplication(event, details = {}) {
 }
 logApplication('startup', { packaged: app.isPackaged });
 
-const profileSlot = createHash('sha256').update(privateDirectory).digest('hex').slice(0, 16);
 const { spawn } = require('child_process');
 
 const PIPE_CANDIDATES = [...'abcdefgh'].map((slot) => `\\\\.\\pipe\\cmux-public-v1-${profileSlot}-${slot}`);

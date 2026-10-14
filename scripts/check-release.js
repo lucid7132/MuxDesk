@@ -28,8 +28,9 @@ const run = require('node:util').promisify(execFile);
       await run('git', ['init', '--quiet', temporary]);
       gitArguments = [`--git-dir=${path.join(temporary, '.git')}`, `--work-tree=${root}`];
     }
-    const excluded = ['.env/profile.json', '.env/cache/example',
-      'node_modules/example', 'release/cmux-v1.0.0.exe', '.aws/example', '.codex/example', '.agents/example'];
+    const excluded = ['.env/profile.json', '.env/cache/example', 'release/.env/profile.json',
+      'release/.env/ssh-credentials.json',
+      'node_modules/example', `release/cmux-v${pkg.version}.exe`, '.aws/example', '.codex/example', '.agents/example'];
     const { stdout: ignored } = await run('git', [...gitArguments, 'check-ignore', '--no-index', ...excluded], { cwd: root, encoding: 'utf8' });
     assert(ignored.trim().split('\n').length === excluded.length, 'Private/generated files are not effectively ignored by Git.');
     const { stdout: index } = await run('git', [...gitArguments, 'ls-files', '--cached', '-z'], { cwd: root, encoding: 'utf8' });
